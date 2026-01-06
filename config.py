@@ -4,43 +4,43 @@ from typing import Tuple
 
 @dataclass
 class AgentConfig:
-    # === MODÈLES LLM ===
-    # SMART: Extraction précise & Rédaction finale
+    # === LLM MODELS ===
+    # SMART: Precise extraction & Final drafting
     SMART_MODEL: str = "qwen3:14b"
-    # CHOOSE: Sélection des chunks pertinents
+    # CHOOSE: Selection of relevant chunks
     CHOOSE_MODEL: str = "qwen3:8b"
-    # FAST: Scan/résumé rapide de masse
+    # FAST: Rapid mass scan/summary
     FAST_MODEL: str = "qwen3:0.6b"
     
-    # === CONNEXION OLLAMA ===
+    # === OLLAMA CONNECTION ===
     BASE_URL: str = "http://localhost:11434"
     TEMPERATURE: float = 0
     
     # === CHUNKING ===
-    # Taille cible d'un chunk en caractères
+    # Target chunk size in characters
     CHUNK_SIZE: int = 1500
-    # Chevauchement entre chunks (évite de couper une idée)
+    # Overlap between chunks (avoids cutting an idea mid-sentence)
     CHUNK_OVERLAP: int = 200
-    # Taille min d'un chunk (évite les micro-chunks)
+    # Minimum chunk size (avoids micro-chunks)
     MIN_CHUNK_SIZE: int = 300
-    # Séparateurs pour découpage intelligent (ordre de priorité)
+    # Separators for intelligent splitting (priority order)
     CHUNK_SEPARATORS: Tuple[str, ...] = (
-        "\n\n\n",   # Triple saut = section majeure
-        "\n\n",     # Double saut = paragraphe
-        "\n",       # Simple saut = ligne
-        ". ",       # Fin de phrase
-        ", ",       # Virgule
-        " ",        # Espace (dernier recours)
+        "\n\n\n",   # Triple newline = major section
+        "\n\n",     # Double newline = paragraph
+        "\n",       # Single newline = line
+        ". ",       # End of sentence
+        ", ",       # Comma
+        " ",        # Space (last resort)
     )
     
-    # === EXTENSIONS SUPPORTÉES ===
+    # === SUPPORTED EXTENSIONS ===
     SUPPORTED_EXTENSIONS: Tuple[str, ...] = (
         ".txt", ".md", ".py", ".json", ".csv", 
         ".log", ".yml", ".yaml", ".xml", ".html"
     )
     
-    # === AFFICHAGE ===
+    # === DISPLAY ===
     VERBOSE: bool = True
-    SHOW_CHUNK_CONTENT: bool = False  # Afficher le contenu des chunks (debug)
+    SHOW_CHUNK_CONTENT: bool = False  # Show chunk content (debug)
 
 cfg = AgentConfig()
