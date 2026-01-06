@@ -1,4 +1,4 @@
-# Silas V2 - Hierarchical RAG Agent 🧠
+# Silas V1 - Hierarchical RAG Agent 🧠
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
 ![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange)
