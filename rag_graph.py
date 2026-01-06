@@ -1,12 +1,12 @@
 """
 Silas V2 - Hierarchical RAG Pipeline.
 
-Flux:
-1. CHUNKER   → Découpe tous les docs en segments
-2. SCANNER   → Résume chaque chunk (FAST_MODEL)
-3. SELECTOR  → Sélectionne les chunks pertinents (CHOOSE_MODEL)
-4. EXTRACTOR → Extrait l'info des chunks élus (SMART_MODEL)
-5. SYNTHESIZER → Rédige la réponse finale (SMART_MODEL)
+Flow:
+1. CHUNKER   → Splits all docs into segments
+2. SCANNER   → Summarizes each chunk (FAST_MODEL)
+3. SELECTOR  → Selects relevant chunks (CHOOSE_MODEL)
+4. EXTRACTOR → Extracts info from elected chunks (SMART_MODEL)
+5. SYNTHESIZER → Writes the final answer (SMART_MODEL)
 """
 
 import os
@@ -27,39 +27,39 @@ from prompts import (
 )
 
 
-# === ÉTAT DU GRAPH ===
+# === GRAPH STATE ===
 class AgentState(TypedDict):
     question: str
     file_directory: str
     # Chunking
-    chunks: List[dict]              # Liste des chunks (sérialisés)
-    chunk_summaries: List[str]      # ["chunk_id: résumé", ...]
-    # Sélection
+    chunks: List[dict]              # List of chunks (serialized)
+    chunk_summaries: List[str]      # ["chunk_id: summary", ...]
+    # Selection
     selected_chunks: List[str]      # ["doc1.md_s2", "doc2.txt_s1"]
     # Extraction
-    extracted_evidence: List[str]   # Passages extraits avec source
-    # Réponse
+    extracted_evidence: List[str]   # Extracted passages with source
+    # Answer
     final_answer: str
     # Stats
     timings: dict
 
 
-# === HELPERS D'AFFICHAGE ===
+# === DISPLAY HELPERS ===
 def print_header(title: str, emoji: str = "▶"):
-    """Affiche un header d'étape."""
+    """Displays a step header."""
     print(f"\n{'='*60}")
     print(f"{emoji} {title}")
     print('='*60)
 
 
 def print_step(msg: str, indent: int = 1):
-    """Affiche une ligne d'étape."""
+    """Displays a step line."""
     prefix = "  " * indent
     print(f"{prefix}• {msg}")
 
 
 def print_progress(current: int, total: int, item: str, result: str = ""):
-    """Affiche une barre de progression simple."""
+    """Displays a simple progress bar."""
     pct = (current / total) * 100 if total > 0 else 0
     bar_len = 20
     filled = int(bar_len * current / total) if total > 0 else 0
@@ -76,20 +76,20 @@ smart_llm = ChatOllama(model=cfg.SMART_MODEL, base_url=cfg.BASE_URL, temperature
 
 # === NODE 1: CHUNKER ===
 def chunk_node(state: AgentState) -> dict:
-    """Découpe tous les documents en chunks."""
-    print_header("ÉTAPE 1: CHUNKING", "✂️")
+    """Splits all documents into chunks."""
+    print_header("STEP 1: CHUNKING", "✂️")
     start = time.time()
     
     directory = state["file_directory"]
     chunks, stats = chunk_directory(directory)
     
-    print_step(f"Dossier: {directory}")
-    print_step(f"Fichiers traités: {stats['files_processed']}")
-    print_step(f"Fichiers ignorés: {stats['files_skipped']}")
-    print_step(f"Chunks générés: {stats['total_chunks']}")
+    print_step(f"Directory: {directory}")
+    print_step(f"Processed files: {stats['files_processed']}")
+    print_step(f"Skipped files: {stats['files_skipped']}")
+    print_step(f"Generated chunks: {stats['total_chunks']}")
     
-    # Détail par fichier
-    print("\n  Détail par fichier:")
+    # Detail per file
+    print("\n  File details:")
     for fname, info in stats["file_details"].items():
         if "error" in info:
             print(f"    ❌ {fname}: {info['error']}")
@@ -97,7 +97,7 @@ def chunk_node(state: AgentState) -> dict:
             ratio = info['chunks']
             print(f"    📄 {fname}: {info['chars']:,} chars → {ratio} chunk(s)")
     
-    # Sérialiser les chunks pour le state
+    # Serialize chunks for state
     chunks_data = [
         {
             "chunk_id": c.chunk_id,
@@ -111,7 +111,7 @@ def chunk_node(state: AgentState) -> dict:
     ]
     
     elapsed = time.time() - start
-    print(f"\n  ⏱️  Durée: {elapsed:.2f}s")
+    print(f"\n  ⏱️  Duration: {elapsed:.2f}s")
     
     return {
         "chunks": chunks_data,
@@ -121,19 +121,19 @@ def chunk_node(state: AgentState) -> dict:
 
 # === NODE 2: SCANNER ===
 def scan_node(state: AgentState) -> dict:
-    """Résume chaque chunk avec le modèle rapide."""
-    print_header("ÉTAPE 2: SCAN", "🔍")
+    """Summarizes each chunk with the fast model."""
+    print_header("STEP 2: SCANNING", "🔍")
     start = time.time()
     
     chunks = state["chunks"]
     total = len(chunks)
     
     if total == 0:
-        print_step("Aucun chunk à scanner")
+        print_step("No chunks to scan")
         return {"chunk_summaries": []}
     
-    print_step(f"Modèle: {cfg.FAST_MODEL}")
-    print_step(f"Chunks à scanner: {total}")
+    print_step(f"Model: {cfg.FAST_MODEL}")
+    print_step(f"Chunks to scan: {total}")
     print()
     
     summaries = []
@@ -141,7 +141,7 @@ def scan_node(state: AgentState) -> dict:
         chunk_id = chunk["chunk_id"]
         content = chunk["content"]
         
-        # Limiter le contenu envoyé au scanner
+        # Limit content sent to scanner
         preview = content[:2000] if len(content) > 2000 else content
         
         try:
@@ -153,12 +153,12 @@ def scan_node(state: AgentState) -> dict:
             print_progress(i, total, chunk_id, summary[:40] + "...")
             
         except Exception as e:
-            summaries.append(f"[{chunk_id}]: (erreur de scan)")
-            print_progress(i, total, chunk_id, f"ERREUR: {e}")
+            summaries.append(f"[{chunk_id}]: (scan error)")
+            print_progress(i, total, chunk_id, f"ERROR: {e}")
     
-    print()  # Nouvelle ligne après la barre
+    print()  # New line after bar
     elapsed = time.time() - start
-    print(f"\n  ⏱️  Durée: {elapsed:.2f}s ({elapsed/total:.2f}s/chunk)")
+    print(f"\n  ⏱️  Duration: {elapsed:.2f}s ({elapsed/total:.2f}s/chunk)")
     
     return {
         "chunk_summaries": summaries,
@@ -168,37 +168,37 @@ def scan_node(state: AgentState) -> dict:
 
 # === NODE 3: SELECTOR ===
 def select_node(state: AgentState) -> dict:
-    """Sélectionne les chunks pertinents."""
-    print_header("ÉTAPE 3: SÉLECTION", "🎯")
+    """Selects relevant chunks."""
+    print_header("STEP 3: SELECTION", "🎯")
     start = time.time()
     
     summaries = state["chunk_summaries"]
     question = state["question"]
     
     if not summaries:
-        print_step("Aucun résumé disponible")
+        print_step("No summaries available")
         return {"selected_chunks": []}
     
-    print_step(f"Modèle: {cfg.CHOOSE_MODEL}")
+    print_step(f"Model: {cfg.CHOOSE_MODEL}")
     print_step(f"Question: {question[:80]}...")
-    print_step(f"Chunks candidats: {len(summaries)}")
+    print_step(f"Candidate chunks: {len(summaries)}")
     
-    # Afficher les résumés
-    print("\n  Résumés analysés:")
-    for s in summaries[:10]:  # Limiter l'affichage
+    # Display summaries
+    print("\n  Analyzed summaries:")
+    for s in summaries[:10]:  # Limit display
         print(f"    {s[:100]}...")
     if len(summaries) > 10:
-        print(f"    ... et {len(summaries) - 10} autres")
+        print(f"    ... and {len(summaries) - 10} others")
     
-    # Appel au modèle de sélection
+    # Call selection model
     summaries_text = "\n".join(summaries)
     prompt = SELECTOR_PROMPT.format(question=question, summaries=summaries_text)
     
-    print("\n  Analyse en cours...")
+    print("\n  Analyzing...")
     response = choose_llm.invoke([HumanMessage(content=prompt)])
     raw_response = response.content.strip()
     
-    # Parser la liste Python
+    # Parse Python list
     selected = []
     try:
         start_bracket = raw_response.find('[')
@@ -207,23 +207,23 @@ def select_node(state: AgentState) -> dict:
             list_str = raw_response[start_bracket:end_bracket]
             selected = ast.literal_eval(list_str)
     except Exception as e:
-        print(f"  ⚠️  Erreur de parsing: {e}")
-        print(f"     Réponse brute: {raw_response[:200]}")
+        print(f"  ⚠️  Parsing error: {e}")
+        print(f"     Raw response: {raw_response[:200]}")
     
-    # Validation: vérifier que les IDs existent
+    # Validation: check IDs exist
     valid_ids = {c["chunk_id"] for c in state["chunks"]}
     selected = [s for s in selected if s in valid_ids]
     
     elapsed = time.time() - start
     
-    print(f"\n  📋 Chunks sélectionnés ({len(selected)}):")
+    print(f"\n  📋 Selected chunks ({len(selected)}):")
     for chunk_id in selected:
         print(f"    ✓ {chunk_id}")
     
     if not selected:
-        print("    (aucun chunk retenu)")
+        print("    (no chunks selected)")
     
-    print(f"\n  ⏱️  Durée: {elapsed:.2f}s")
+    print(f"\n  ⏱️  Duration: {elapsed:.2f}s")
     
     return {
         "selected_chunks": selected,
@@ -233,8 +233,8 @@ def select_node(state: AgentState) -> dict:
 
 # === NODE 4: EXTRACTOR ===
 def extract_node(state: AgentState) -> dict:
-    """Extrait l'information des chunks sélectionnés."""
-    print_header("ÉTAPE 4: EXTRACTION", "⛏️")
+    """Extracts information from selected chunks."""
+    print_header("STEP 4: EXTRACTION", "⛏️")
     start = time.time()
     
     selected = state["selected_chunks"]
@@ -242,11 +242,11 @@ def extract_node(state: AgentState) -> dict:
     chunks_map = {c["chunk_id"]: c for c in state["chunks"]}
     
     if not selected:
-        print_step("Aucun chunk à analyser")
-        return {"extracted_evidence": ["Aucune information pertinente trouvée dans les documents."]}
+        print_step("No chunks to analyze")
+        return {"extracted_evidence": ["No relevant information found in documents."]}
     
-    print_step(f"Modèle: {cfg.SMART_MODEL}")
-    print_step(f"Chunks à extraire: {len(selected)}")
+    print_step(f"Model: {cfg.SMART_MODEL}")
+    print_step(f"Chunks to extract: {len(selected)}")
     print()
     
     evidence = []
@@ -257,7 +257,7 @@ def extract_node(state: AgentState) -> dict:
         
         content = chunk["content"]
         
-        print_step(f"[{i}/{len(selected)}] Analyse de {chunk_id} ({len(content)} chars)", indent=1)
+        print_step(f"[{i}/{len(selected)}] Analyzing {chunk_id} ({len(content)} chars)", indent=1)
         
         try:
             prompt = EXTRACTOR_PROMPT.format(
@@ -271,19 +271,19 @@ def extract_node(state: AgentState) -> dict:
             if "NOTHING" not in extracted.upper() and len(extracted) > 10:
                 evidence.append(f"--- Source: {chunk_id} ---\n{extracted}")
                 preview = extracted[:60].replace('\n', ' ')
-                print_step(f"✅ Info trouvée: {preview}...", indent=2)
+                print_step(f"✅ Info found: {preview}...", indent=2)
             else:
-                print_step(f"⬜ Rien de pertinent", indent=2)
+                print_step(f"⬜ Nothing relevant", indent=2)
                 
         except Exception as e:
-            print_step(f"❌ Erreur: {e}", indent=2)
+            print_step(f"❌ Error: {e}", indent=2)
     
     elapsed = time.time() - start
-    print(f"\n  📊 Résultat: {len(evidence)} extraits pertinents")
-    print(f"  ⏱️  Durée: {elapsed:.2f}s")
+    print(f"\n  📊 Result: {len(evidence)} relevant extracts")
+    print(f"  ⏱️  Duration: {elapsed:.2f}s")
     
     if not evidence:
-        evidence = ["Aucune information pertinente n'a pu être extraite des chunks sélectionnés."]
+        evidence = ["No relevant information could be extracted from selected chunks."]
     
     return {
         "extracted_evidence": evidence,
@@ -293,20 +293,20 @@ def extract_node(state: AgentState) -> dict:
 
 # === NODE 5: SYNTHESIZER ===
 def synthesize_node(state: AgentState) -> dict:
-    """Rédige la réponse finale."""
-    print_header("ÉTAPE 5: SYNTHÈSE", "✍️")
+    """Writes the final answer."""
+    print_header("STEP 5: SYNTHESIS", "✍️")
     start = time.time()
     
     question = state["question"]
     evidence = state["extracted_evidence"]
     
-    print_step(f"Modèle: {cfg.SMART_MODEL}")
-    print_step(f"Preuves à synthétiser: {len(evidence)}")
+    print_step(f"Model: {cfg.SMART_MODEL}")
+    print_step(f"Evidence to synthesize: {len(evidence)}")
     
-    # Construire le contexte
+    # Build context
     evidence_text = "\n\n".join(evidence)
     
-    # Appel au modèle
+    # Call model
     messages = [
         SystemMessage(content=SILAS_PERSONA),
         HumanMessage(content=SYNTHESIZE_PROMPT.format(
@@ -315,12 +315,12 @@ def synthesize_node(state: AgentState) -> dict:
         ))
     ]
     
-    print_step("Rédaction en cours...")
+    print_step("Writing answer...")
     response = smart_llm.invoke(messages)
     answer = response.content.strip()
     
     elapsed = time.time() - start
-    print(f"\n  ⏱️  Durée: {elapsed:.2f}s")
+    print(f"\n  ⏱️  Duration: {elapsed:.2f}s")
     
     return {
         "final_answer": answer,
@@ -328,19 +328,19 @@ def synthesize_node(state: AgentState) -> dict:
     }
 
 
-# === CONSTRUCTION DU GRAPH ===
+# === GRAPH CONSTRUCTION ===
 def build_graph() -> StateGraph:
-    """Construit le workflow LangGraph."""
+    """Builds the LangGraph workflow."""
     workflow = StateGraph(AgentState)
     
-    # Ajout des nodes
+    # Add nodes
     workflow.add_node("chunker", chunk_node)
     workflow.add_node("scanner", scan_node)
     workflow.add_node("selector", select_node)
     workflow.add_node("extractor", extract_node)
     workflow.add_node("synthesizer", synthesize_node)
     
-    # Définition du flux
+    # Define flow
     workflow.set_entry_point("chunker")
     workflow.add_edge("chunker", "scanner")
     workflow.add_edge("scanner", "selector")
@@ -351,5 +351,5 @@ def build_graph() -> StateGraph:
     return workflow.compile()
 
 
-# Instance globale
+# Global instance
 app = build_graph()
