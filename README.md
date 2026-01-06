@@ -5,7 +5,30 @@
 ![Ollama](https://img.shields.io/badge/Backend-Ollama-black)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**Silas** is a document analysis agent utilizing a **Hierarchical RAG** (Retrieval-Augmented Generation) architecture. Unlike classic RAG approaches that rely on vector search (embeddings), Silas performs surgical text analysis by cutting, scanning, and selecting relevant "chunks".
+**Silas** is an intelligent document analysis agent built on a **Hierarchical RAG** (Retrieval-Augmented Generation) architecture. It enables you to query large collections of documents and receive precise, well-cited answers.
+
+Unlike traditional RAG systems that rely on vector databases and semantic embeddings, Silas takes a different approach: it performs **surgical text analysis** by intelligently segmenting documents into chunks, scanning them with a fast model, and progressively filtering down to only the most relevant passages. This hierarchical filtering mimics how a human researcher would skim through documents before deep-reading specific sections.
+
+### Key Features
+
+- **Scalable document processing**: Handle dozens of documents (PDF, TXT, Markdown, etc.) in a single query.
+- **Precise citations**: Every claim in the final answer is backed by a specific chunk reference (`[document_s3: extracted passage]`), so you can trace exactly where the information comes from.
+- **No vector database required**: No need to set up embeddings, ChromaDB, or Pinecone. Silas uses pure LLM-based filtering.
+- **Cost-efficient multi-model pipeline**: Uses small, fast models for bulk scanning and reserves large, powerful models only for final extraction and synthesis.
+- **100% local and private**: Runs entirely on your machine using [Ollama](https://ollama.com/) as the inference backend. Your documents never leave your computer.
+
+### Built With
+
+- **[LangGraph](https://github.com/langchain-ai/langgraph)**: Orchestrates the multi-step pipeline as a stateful graph, enabling clean separation between chunking, scanning, selection, extraction, and synthesis nodes.
+- **[Ollama](https://ollama.com/)**: Serves local LLMs (Qwen, Llama, Mistral, etc.) with a simple API. Silas defaults to the Qwen 3 family for its excellent performance-to-size ratio.
+- **[LangChain-Ollama](https://python.langchain.com/docs/integrations/llms/ollama/)**: Provides the bridge between LangGraph and Ollama for seamless model invocation.
+
+### Use Cases
+
+- **Legal document review**: Ask questions across hundreds of contracts and get answers with exact clause references.
+- **Research synthesis**: Query a folder of academic papers and receive a synthesized answer with citations to specific sections.
+- **Technical documentation**: Find precise information buried in large codebases or product manuals.
+- **Due diligence**: Analyze financial reports, meeting notes, or compliance documents efficiently.
 
 Designed to run **100% locally** with [Ollama](https://ollama.com/).
 
