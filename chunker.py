@@ -1,7 +1,7 @@
 """
-Chunker intelligent pour Silas V2.
-Découpe les documents en segments exploitables sans utiliser de LLM.
-Utilise des heuristiques basées sur la structure du texte.
+Intelligent Chunker for Silas V2.
+Splits documents into exploitable segments without using an LLM.
+Uses heuristics based on text structure.
 """
 
 import os
@@ -13,48 +13,48 @@ from config import cfg
 
 @dataclass
 class Chunk:
-    """Représente un segment de document."""
-    chunk_id: str       # ex: "rapport.md_s3"
-    filename: str       # ex: "rapport.md"
+    """Represents a document segment."""
+    chunk_id: str       # ex: "report.md_s3"
+    filename: str       # ex: "report.md"
     section_idx: int    # ex: 3
-    content: str        # Contenu textuel du chunk
-    char_start: int     # Position de début dans le fichier original
-    char_end: int       # Position de fin
+    content: str        # Textual content of the chunk
+    char_start: int     # Start position in original file
+    char_end: int       # End position
 
 
 def find_best_split_point(text: str, target_pos: int, separators: Tuple[str, ...]) -> int:
     """
-    Trouve le meilleur point de coupure proche de target_pos.
-    Cherche le séparateur le plus "fort" dans une fenêtre autour de target_pos.
+    Finds the best split point close to target_pos.
+    Looks for the "strongest" separator in a window around target_pos.
     """
-    window = cfg.CHUNK_OVERLAP  # Zone de recherche
+    window = cfg.CHUNK_OVERLAP  # Search zone
     search_start = max(0, target_pos - window)
     search_end = min(len(text), target_pos + window)
     search_zone = text[search_start:search_end]
     
     for sep in separators:
-        # Chercher la dernière occurrence du séparateur dans la zone
+        # Find the last occurrence of the separator in the zone
         pos = search_zone.rfind(sep)
         if pos != -1:
             return search_start + pos + len(sep)
     
-    # Aucun séparateur trouvé, couper au target
+    # No separator found, split at target
     return target_pos
 
 
 def chunk_text(text: str, filename: str) -> List[Chunk]:
     """
-    Découpe un texte en chunks intelligents.
+    Splits text into intelligent chunks.
     
-    Stratégie:
-    1. Si le texte est petit (< CHUNK_SIZE), un seul chunk
-    2. Sinon, découpage aux séparateurs naturels (paragraphes, phrases)
-    3. Chevauchement pour préserver le contexte
+    Strategy:
+    1. If text is small (< CHUNK_SIZE), single chunk
+    2. Otherwise, split at natural separators (paragraphs, sentences)
+    3. Overlap to preserve context
     """
     chunks = []
     text_len = len(text)
     
-    # Document court = 1 seul chunk
+    # Short document = single chunk
     if text_len <= cfg.CHUNK_SIZE:
         return [Chunk(
             chunk_id=f"{filename}_s1",
@@ -65,24 +65,24 @@ def chunk_text(text: str, filename: str) -> List[Chunk]:
             char_end=text_len
         )]
     
-    # Document long = découpage intelligent
+    # Long document = intelligent splitting
     current_pos = 0
     section_idx = 1
     
     while current_pos < text_len:
-        # Calculer la fin théorique du chunk
+        # Calculate theoretical chunk end
         chunk_end = min(current_pos + cfg.CHUNK_SIZE, text_len)
         
-        # Si on n'est pas à la fin, chercher un bon point de coupure
+        # If not at end, find a good split point
         if chunk_end < text_len:
             chunk_end = find_best_split_point(
                 text, chunk_end, cfg.CHUNK_SEPARATORS
             )
         
-        # Extraire le contenu
+        # Extract content
         chunk_content = text[current_pos:chunk_end].strip()
         
-        # Ignorer les chunks trop petits (sauf le dernier)
+        # Ignore chunks that are too small (except the last one)
         if len(chunk_content) >= cfg.MIN_CHUNK_SIZE or chunk_end >= text_len:
             chunks.append(Chunk(
                 chunk_id=f"{filename}_s{section_idx}",
@@ -94,21 +94,21 @@ def chunk_text(text: str, filename: str) -> List[Chunk]:
             ))
             section_idx += 1
         
-        # Avancer avec chevauchement
+        # Advance with overlap
         current_pos = chunk_end - cfg.CHUNK_OVERLAP
         if current_pos <= chunks[-1].char_start if chunks else 0:
-            current_pos = chunk_end  # Éviter boucle infinie
+            current_pos = chunk_end  # Avoid infinite loop
     
     return chunks
 
 
 def chunk_directory(directory: str) -> Tuple[List[Chunk], dict]:
     """
-    Découpe tous les fichiers d'un dossier en chunks.
+    Splits all files in a directory into chunks.
     
     Returns:
-        chunks: Liste de tous les chunks
-        stats: Statistiques du découpage
+        chunks: List of all chunks
+        stats: Splitting statistics
     """
     all_chunks = []
     stats = {
@@ -150,14 +150,14 @@ def chunk_directory(directory: str) -> Tuple[List[Chunk], dict]:
 
 
 def format_chunk_for_display(chunk: Chunk, max_len: int = 80) -> str:
-    """Formate un chunk pour affichage console."""
+    """Formats a chunk for console display."""
     preview = chunk.content[:max_len].replace('\n', ' ')
     if len(chunk.content) > max_len:
         preview += "..."
     return f"[{chunk.chunk_id}] ({len(chunk.content)} chars) {preview}"
 
 
-# === TEST DIRECT ===
+# === DIRECT TEST ===
 if __name__ == "__main__":
     import sys
     
@@ -168,21 +168,21 @@ if __name__ == "__main__":
     directory = sys.argv[1]
     chunks, stats = chunk_directory(directory)
     
-    print(f"\n📊 STATISTIQUES DE CHUNKING")
-    print(f"   Fichiers traités: {stats['files_processed']}")
-    print(f"   Fichiers ignorés: {stats['files_skipped']}")
-    print(f"   Total chunks: {stats['total_chunks']}")
+    print(f"\n📊 CHUNKING STATISTICS")
+    print(f"   Processed files: {stats['files_processed']}")
+    print(f"   Skipped files:   {stats['files_skipped']}")
+    print(f"   Total chunks:    {stats['total_chunks']}")
     
-    print(f"\n📄 DÉTAIL PAR FICHIER:")
+    print(f"\n📄 DETAILS PER FILE:")
     for fname, info in stats["file_details"].items():
         if "error" in info:
             print(f"   ❌ {fname}: {info['error']}")
         else:
             print(f"   ✓ {fname}: {info['chars']} chars → {info['chunks']} chunks")
     
-    print(f"\n📦 APERÇU DES CHUNKS:")
+    print(f"\n📦 CHUNK PREVIEW:")
     for chunk in chunks[:10]:
         print(f"   {format_chunk_for_display(chunk)}")
     
     if len(chunks) > 10:
-        print(f"   ... et {len(chunks) - 10} autres chunks")
+        print(f"   ... and {len(chunks) - 10} other chunks")
