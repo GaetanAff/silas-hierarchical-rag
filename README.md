@@ -27,5 +27,5 @@ Standard RAG often retrieves entire documents or imprecise fragments. Silas mimi
 
 ### 1. Clone the repository
 ```bash
-git clone [https://github.com/YOUR_USERNAME/silas-hierarchical-rag.git](https://github.com/YOUR_USERNAME/silas-hierarchical-rag.git)
+git clone [https://github.com/GaetanAff/silas-hierarchical-rag.git](https://github.com/GaetanAff/silas-hierarchical-rag.git)
 cd silas-hierarchical-rag
