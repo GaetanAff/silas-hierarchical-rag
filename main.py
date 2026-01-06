@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Silas V2 - Hierarchical RAG Agent
-Point d'entrée CLI avec affichage détaillé.
+CLI entry point with detailed display.
 """
 
 import sys
@@ -11,7 +11,7 @@ import os
 import time
 from datetime import datetime
 
-# Suppression des warnings
+# Suppress warnings
 warnings.filterwarnings("ignore")
 
 from config import cfg
@@ -19,7 +19,7 @@ from rag_graph import app
 
 
 def print_banner():
-    """Affiche la bannière de démarrage."""
+    """Displays the startup banner."""
     banner = """
 ╔═══════════════════════════════════════════════════════════════╗
 ║                   SILAS V2 - Hierarchical RAG                 ║
@@ -30,7 +30,7 @@ def print_banner():
 
 
 def print_config():
-    """Affiche la configuration active."""
+    """Displays the active configuration."""
     print("┌─ Configuration ────────────────────────────────────────────┐")
     print(f"│  🐇 FAST Model (Scan)     : {cfg.FAST_MODEL:<30} │")
     print(f"│  ⚖️  CHOOSE Model (Select) : {cfg.CHOOSE_MODEL:<30} │")
@@ -41,8 +41,8 @@ def print_config():
 
 
 def print_timing_summary(timings: dict, total_time: float):
-    """Affiche le résumé des temps d'exécution."""
-    print("\n┌─ Temps d'exécution ────────────────────────────────────────┐")
+    """Displays the execution time summary."""
+    print("\n┌─ Execution Time ───────────────────────────────────────────┐")
     
     steps = [
         ("Chunking", "chunking"),
@@ -68,51 +68,51 @@ def print_timing_summary(timings: dict, total_time: float):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Silas V2 - Hierarchical RAG pour analyse documentaire",
+        description="Silas V2 - Hierarchical RAG for document analysis",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Exemples:
-  python main.py -q "Quelle est la date du rapport?" -d ./docs/
-  python main.py -q "Résume les points clés" -d ./projet/ -v
+Examples:
+  python main.py -q "What is the date of the report?" -d ./docs/
+  python main.py -q "Summarize the key points" -d ./project/ -v
         """
     )
     parser.add_argument("-q", "--question", type=str, required=True, 
-                        help="Question à poser aux documents")
+                        help="Question to ask the documents")
     parser.add_argument("-d", "--directory", type=str, required=True, 
-                        help="Dossier contenant les documents")
+                        help="Directory containing the documents")
     parser.add_argument("-v", "--verbose", action="store_true",
-                        help="Mode verbeux (affiche plus de détails)")
+                        help="Verbose mode (shows more details)")
     
     args = parser.parse_args()
 
-    # Validation du dossier
+    # Directory validation
     if not os.path.isdir(args.directory):
-        print(f"❌ Erreur : Le dossier '{args.directory}' est introuvable.")
+        print(f"❌ Error: The directory '{args.directory}' was not found.")
         sys.exit(1)
 
-    # Compter les fichiers
+    # Count files
     supported = cfg.SUPPORTED_EXTENSIONS
     files = [f for f in os.listdir(args.directory) if f.endswith(supported)]
     
     if not files:
-        print(f"❌ Erreur : Aucun fichier supporté trouvé dans '{args.directory}'")
-        print(f"   Extensions supportées: {', '.join(supported)}")
+        print(f"❌ Error: No supported files found in '{args.directory}'")
+        print(f"   Supported extensions: {', '.join(supported)}")
         sys.exit(1)
 
-    # Affichage initial
+    # Initial display
     print_banner()
     print_config()
     
-    print("\n┌─ Requête ───────────────────────────────────────────────────┐")
-    print(f"│  📂 Dossier : {args.directory:<44} │")
-    print(f"│  📄 Fichiers: {len(files):<44} │")
+    print("\n┌─ Query ─────────────────────────────────────────────────────┐")
+    print(f"│  📂 Folder : {args.directory:<44} │")
+    print(f"│  📄 Files  : {len(files):<44} │")
     
-    # Tronquer la question si trop longue pour l'affichage
+    # Truncate question if too long for display
     q_display = args.question[:42] + "..." if len(args.question) > 45 else args.question
-    print(f"│  ❓ Question: {q_display:<44} │")
+    print(f"│  ❓ Question: {q_display:<43} │")
     print("└─────────────────────────────────────────────────────────────┘")
     
-    # Préparer l'état initial
+    # Prepare initial state
     initial_state = {
         "question": args.question,
         "file_directory": args.directory,
@@ -127,25 +127,25 @@ Exemples:
     start_time = time.time()
     
     try:
-        # Lancement du pipeline
+        # Run pipeline
         result = app.invoke(initial_state)
         
         total_time = time.time() - start_time
         
-        # Statistiques
+        # Statistics
         print_timing_summary(result.get("timings", {}), total_time)
         
-        # Stats du traitement
-        print("\n┌─ Statistiques ──────────────────────────────────────────────┐")
-        print(f"│  Chunks créés     : {len(result.get('chunks', [])):<38} │")
-        print(f"│  Chunks scannés   : {len(result.get('chunk_summaries', [])):<38} │")
-        print(f"│  Chunks retenus   : {len(result.get('selected_chunks', [])):<38} │")
-        print(f"│  Extraits générés : {len(result.get('extracted_evidence', [])):<38} │")
+        # Processing Stats
+        print("\n┌─ Statistics ────────────────────────────────────────────────┐")
+        print(f"│  Chunks created   : {len(result.get('chunks', [])):<38} │")
+        print(f"│  Chunks scanned   : {len(result.get('chunk_summaries', [])):<38} │")
+        print(f"│  Chunks selected  : {len(result.get('selected_chunks', [])):<38} │")
+        print(f"│  Evidence extracted: {len(result.get('extracted_evidence', [])):<37} │")
         print("└─────────────────────────────────────────────────────────────┘")
         
-        # Réponse finale
+        # Final Answer
         print("\n" + "═" * 61)
-        print("                         RÉPONSE FINALE")
+        print("                         FINAL ANSWER")
         print("═" * 61)
         print()
         print(result["final_answer"])
@@ -153,11 +153,11 @@ Exemples:
         print("═" * 61)
         
     except KeyboardInterrupt:
-        print("\n\n👋 Arrêt demandé par l'utilisateur.")
+        print("\n\n👋 Stopped by user.")
         sys.exit(0)
         
     except Exception as e:
-        print(f"\n❌ Erreur critique : {e}")
+        print(f"\n❌ Critical Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
