@@ -29,8 +29,7 @@ Unlike traditional RAG systems that rely on vector databases and semantic embedd
 - **Research synthesis**: Query a folder of academic papers and receive a synthesized answer with citations to specific sections.
 - **Technical documentation**: Find precise information buried in large codebases or product manuals.
 - **Due diligence**: Analyze financial reports, meeting notes, or compliance documents efficiently.
-
-Designed to run **100% locally** with [Ollama](https://ollama.com/).
+- 
 
 ## 🚀 Why "Hierarchical"?
 
